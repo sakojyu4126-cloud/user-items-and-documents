@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation blueprints for SuppliesRequest
+    function isValidSuppliesRequest(data) {
+      return data.createdAt is string && data.createdAt.size() <= 40
+        && data.userName is string && data.userName.size() > 0 && data.userName.size() <= 100
+        && data.helperName is string && data.helperName.size() > 0 && data.helperName.size() <= 100
+        && data.otherDetails is string && data.otherDetails.size() <= 1000
+        && data.status in ["無", "残少", "新規"]
+        && data.urgency in ["普通", "至急"]
+        && data.contactStatus in ["未連絡", "連絡済", "連絡したが返事がない"]
+        && data.selectedItems is list && data.selectedItems.size() <= 20
+        && (!("receiptDate" in data) || (data.receiptDate is string && data.receiptDate.size() <= 40))
+        && (!("officeStaff" in data) || (data.officeStaff is string && data.officeStaff.size() <= 100))
+        && (!("contactMethod" in data) || (data.contactMethod in ["LINE", "電話またはSMS", "LINE＆電話", ""]))
+        && (!("updatedAt" in data) || (data.updatedAt is string && data.updatedAt.size() <= 40));
+    }
+
+    // Validation blueprints for DocumentHandover
+    function isValidDocumentHandover(data) {
+      return data.createdAt is string && data.createdAt.size() <= 40
+        && data.userName is string && data.userName.size() > 0 && data.userName.size() <= 100
+        && data.documentName is string && data.documentName.size() > 0 && data.documentName.size() <= 200
+        && data.familyNotified is bool
+        && data.handoverStatus in ["保管中", "受渡済"]
+        && (!("notificationDate" in data) || (data.notificationDate is string && data.notificationDate.size() <= 40))
+        && (!("notificationStaff" in data) || (data.notificationStaff is string && data.notificationStaff.size() <= 100))
+        && (!("handoverDate" in data) || (data.handoverDate is string && data.handoverDate.size() <= 40))
+        && (!("handoverStaff" in data) || (data.handoverStaff is string && data.handoverStaff.size() <= 100))
+        && (!("recipientName" in data) || (data.recipientName is string && data.recipientName.size() <= 100))
+        && (!("notes" in data) || (data.notes is string && data.notes.size() <= 1000))
+        && (!("updatedAt" in data) || (data.updatedAt is string && data.updatedAt.size() <= 40));
+    }
+
+    // Rules for supplies_requests collection
+    match /supplies_requests/{requestId} {
+      allow read: if true;
+      
+      allow create: if isValidId(requestId) 
+        && isValidSuppliesRequest(incoming())
+        && incoming().keys().hasAll(["createdAt", "userName", "helperName", "selectedItems", "otherDetails", "status", "urgency", "contactStatus"]);
+      
+      allow update: if isValidId(requestId)
+        && isValidSuppliesRequest(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().userName == existing().userName
+        && incoming().helperName == existing().helperName
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          "status", "urgency", "receiptDate", "officeStaff", "contactMethod", "contactStatus", "updatedAt"
+        ]);
+
+      allow delete: if true;
+    }
+
+    // Rules for document_handovers collection
+    match /document_handovers/{documentId} {
+      allow read: if true;
+      
+      allow create: if isValidId(documentId)
+        && isValidDocumentHandover(incoming())
+        && incoming().keys().hasAll(["createdAt", "userName", "documentName", "familyNotified", "handoverStatus"]);
+      
+      allow update: if isValidId(documentId)
+        && isValidDocumentHandover(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().userName == existing().userName
+        && incoming().documentName == existing().documentName
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          "familyNotified", "notificationDate", "notificationStaff", "handoverStatus", "handoverDate", "handoverStaff", "recipientName", "notes", "updatedAt"
+        ]);
+
+      allow delete: if true;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "利用者物品・書類の連絡管理",
+  "description": "施設等の利用者様の必要物品の申請や、到着した重要書類（受取）の家族連絡・受渡を複数のスマホやPCでリアルタイムに同期・管理するアプリです。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

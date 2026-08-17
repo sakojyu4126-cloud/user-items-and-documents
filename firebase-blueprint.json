@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "SuppliesRequest": {
+      "title": "SuppliesRequest",
+      "description": "A request for patient/user supplies from a helper",
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the request was created"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Name of the patient/user requiring supplies"
+        },
+        "helperName": {
+          "type": "string",
+          "description": "Name of the helper who requested the supplies"
+        },
+        "selectedItems": {
+          "type": "array",
+          "description": "Categories and list of items requested"
+        },
+        "otherDetails": {
+          "type": "string",
+          "description": "Additional details or notes about the request"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["無", "残少", "新規"],
+          "description": "Current status of the items in the household"
+        },
+        "urgency": {
+          "type": "string",
+          "enum": ["普通", "至急"],
+          "description": "Urgency tier of the request"
+        },
+        "receiptDate": {
+          "type": "string",
+          "description": "Date when the request was acknowledged by the office"
+        },
+        "officeStaff": {
+          "type": "string",
+          "description": "Name of the office staff who processed the request"
+        },
+        "contactMethod": {
+          "type": "string",
+          "enum": ["LINE", "電話またはSMS", "LINE＆電話", ""],
+          "description": "Method of contacting the family"
+        },
+        "contactStatus": {
+          "type": "string",
+          "enum": ["未連絡", "連絡済", "連絡したが返事がない"],
+          "description": "Status of the contact attempt"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the record was last updated"
+        }
+      },
+      "required": ["createdAt", "userName", "helperName", "selectedItems", "otherDetails", "status", "urgency", "contactStatus"]
+    },
+    "DocumentHandover": {
+      "title": "DocumentHandover",
+      "description": "A record of a document or valuable item received and kept for handover",
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the document was received or logged"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Name of the user/patient concerned"
+        },
+        "documentName": {
+          "type": "string",
+          "description": "Name or description of the document/valuable item"
+        },
+        "familyNotified": {
+          "type": "boolean",
+          "description": "Whether the family has been notified"
+        },
+        "notificationDate": {
+          "type": "string",
+          "description": "Date when the family was notified"
+        },
+        "notificationStaff": {
+          "type": "string",
+          "description": "Name of the staff member who notified the family"
+        },
+        "handoverStatus": {
+          "type": "string",
+          "enum": ["保管中", "受渡済"],
+          "description": "Current handover status"
+        },
+        "handoverDate": {
+          "type": "string",
+          "description": "Date when the item was handed over"
+        },
+        "handoverStaff": {
+          "type": "string",
+          "description": "Name of the staff member who performed the handover"
+        },
+        "recipientName": {
+          "type": "string",
+          "description": "Name of the family member or person who received the item"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the record was last updated"
+        }
+      },
+      "required": ["createdAt", "userName", "documentName", "familyNotified", "handoverStatus"]
+    }
+  },
+  "firestore": {
+    "supplies_requests/{requestId}": {
+      "schema": "SuppliesRequest",
+      "description": "Supplies request collection"
+    },
+    "document_handovers/{documentId}": {
+      "schema": "DocumentHandover",
+      "description": "Document handover collection"
+    }
+  }
+}
