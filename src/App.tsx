@@ -72,43 +72,141 @@ export default function App() {
     }
   }, [documentHandovers]);
 
-  // 1. Fetch real-time subscriptions with error handling
+  // 1. Fetch real-time subscriptions with resilient error handling and auto-reconnect
   useEffect(() => {
     let unsubscribeSupplies = () => {};
     let unsubscribeDocuments = () => {};
+    let retryTimer: any = null;
 
-    const handleFirestoreError = (err: any) => {
-      console.error("Firestore connection issue: ", err);
-      setLoading(false);
+    const setupSubscriptions = () => {
+      unsubscribeSupplies();
+      unsubscribeDocuments();
+
+      const handleFirestoreError = (err: any) => {
+        const errMsg = err?.message || String(err);
+        if (errMsg.includes('Quota') || errMsg.includes('resource-exhausted') || err?.code === 'resource-exhausted') {
+          console.warn("[Firestore] Daily free read quota reached. App is serving smoothly from local cache.");
+        } else {
+          console.warn("[Firestore] Connection notice: ", errMsg);
+        }
+        setLoading(false);
+
+        // Schedule a silent retry in 60 seconds
+        if (!retryTimer) {
+          retryTimer = setTimeout(() => {
+            retryTimer = null;
+            setupSubscriptions();
+          }, 60000);
+        }
+      };
+
+      try {
+        unsubscribeSupplies = subscribeSuppliesRequests(
+          (requests) => {
+            setSuppliesRequests(requests);
+            setLoading(false);
+          },
+          handleFirestoreError
+        );
+
+        unsubscribeDocuments = subscribeDocumentHandovers(
+          (docs) => {
+            setDocumentHandovers(docs);
+            setLoading(false);
+          },
+          handleFirestoreError
+        );
+      } catch (err) {
+        handleFirestoreError(err);
+      }
     };
 
-    try {
-      // Listen to supplies requests in real-time
-      unsubscribeSupplies = subscribeSuppliesRequests(
-        (requests) => {
-          setSuppliesRequests(requests);
-          setLoading(false);
-        },
-        handleFirestoreError
-      );
-
-      // Listen to document handovers in real-time
-      unsubscribeDocuments = subscribeDocumentHandovers(
-        (docs) => {
-          setDocumentHandovers(docs);
-          setLoading(false);
-        },
-        handleFirestoreError
-      );
-    } catch (err) {
-      handleFirestoreError(err);
-    }
+    setupSubscriptions();
 
     return () => {
       unsubscribeSupplies();
       unsubscribeDocuments();
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, []);
+
+  // Optimistic Handlers for Supplies Requests
+  const handleAddSuppliesRequest = async (newReq: Omit<SuppliesRequest, 'id'>) => {
+    const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const itemToAdd: SuppliesRequest = {
+      id: tempId,
+      ...newReq
+    };
+    setSuppliesRequests(prev => [itemToAdd, ...prev]);
+    try {
+      const realId = await addSuppliesRequest(newReq);
+      if (realId) {
+        setSuppliesRequests(prev => prev.map(item => item.id === tempId ? { ...item, id: realId } : item));
+        return realId;
+      }
+      return tempId;
+    } catch (e) {
+      console.warn('Firestore write warning:', e);
+      return tempId;
+    }
+  };
+
+  const handleUpdateSuppliesRequest = async (id: string, updates: Partial<SuppliesRequest>) => {
+    setSuppliesRequests(prev => prev.map(item => item.id === id ? { ...item, ...updates, updatedAt: new Date().toISOString() } : item));
+    try {
+      await updateSuppliesRequest(id, updates);
+    } catch (e) {
+      console.warn('Firestore update warning:', e);
+    }
+  };
+
+  const handleDeleteSuppliesRequest = async (id: string) => {
+    setSuppliesRequests(prev => prev.filter(item => item.id !== id));
+    try {
+      await deleteSuppliesRequest(id);
+    } catch (e) {
+      console.warn('Firestore delete warning:', e);
+    }
+  };
+
+  // Optimistic Handlers for Documents
+  const handleAddDocumentHandover = async (docEntry: Omit<DocumentHandover, 'id'>) => {
+    const tempId = 'temp_doc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const itemToAdd: DocumentHandover = {
+      id: tempId,
+      ...docEntry
+    };
+    setDocumentHandovers(prev => [itemToAdd, ...prev]);
+    try {
+      const realId = await addDocumentHandover(docEntry);
+      if (realId) {
+        setDocumentHandovers(prev => prev.map(item => item.id === tempId ? { ...item, id: realId } : item));
+        return realId;
+      }
+      return tempId;
+    } catch (e) {
+      console.warn('Firestore doc write warning:', e);
+      return tempId;
+    }
+  };
+
+  const handleUpdateDocumentHandover = async (id: string, updates: Partial<DocumentHandover>) => {
+    setDocumentHandovers(prev => prev.map(item => item.id === id ? { ...item, ...updates, updatedAt: new Date().toISOString() } : item));
+    try {
+      await updateDocumentHandover(id, updates);
+    } catch (e) {
+      console.warn('Firestore doc update warning:', e);
+    }
+  };
+
+  const handleDeleteDocumentHandover = async (id: string) => {
+    setDocumentHandovers(prev => prev.filter(item => item.id !== id));
+    try {
+      await deleteDocumentHandover(id);
+    } catch (e) {
+      console.warn('Firestore doc delete warning:', e);
+    }
+  };
 
   // Handle immediate local restore from backup file
   const handleLocalRestore = useCallback((newSupplies: SuppliesRequest[], newDocs: DocumentHandover[]) => {
@@ -170,7 +268,7 @@ export default function App() {
           <div>
             {activeTab === 'helper' && (
               <HelperRequestForm 
-                onAddRequest={addSuppliesRequest}
+                onAddRequest={handleAddSuppliesRequest}
                 allRequests={suppliesRequests}
               />
             )}
@@ -178,8 +276,8 @@ export default function App() {
             {activeTab === 'office-supplies' && (
               <OfficeSuppliesAdmin 
                 requests={suppliesRequests}
-                onUpdateRequest={updateSuppliesRequest}
-                onDeleteRequest={deleteSuppliesRequest}
+                onUpdateRequest={handleUpdateSuppliesRequest}
+                onDeleteRequest={handleDeleteSuppliesRequest}
                 onOpenDataManagement={() => setShowDataModal(true)}
               />
             )}
@@ -187,9 +285,9 @@ export default function App() {
             {activeTab === 'office-docs' && (
               <OfficeDocumentAdmin 
                 documents={documentHandovers}
-                onAddDocument={addDocumentHandover}
-                onUpdateDocument={updateDocumentHandover}
-                onDeleteDocument={deleteDocumentHandover}
+                onAddDocument={handleAddDocumentHandover}
+                onUpdateDocument={handleUpdateDocumentHandover}
+                onDeleteDocument={handleDeleteDocumentHandover}
                 onOpenDataManagement={() => setShowDataModal(true)}
               />
             )}

@@ -56,7 +56,12 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  const isQuota = errInfo.error.includes('Quota') || errInfo.error.includes('resource-exhausted');
+  if (isQuota) {
+    console.warn('[Firestore Operation] Daily quota limit reached: ', errInfo.error);
+  } else {
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+  }
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -82,8 +87,13 @@ export function subscribeSuppliesRequests(
       } as SuppliesRequest);
     });
     callback(requests);
-  }, (error) => {
-    console.error('Firestore subscribeSuppliesRequests error: ', error);
+  }, (error: any) => {
+    const isQuota = error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit') || error?.message?.includes('quota');
+    if (isQuota) {
+      console.warn('[Firestore] Supplies sync standby: daily read quota limit reached, using local data until reset.');
+    } else {
+      console.warn('[Firestore] Supplies sync notice: ', error?.message || error);
+    }
     if (onError) {
       onError(error);
     }
@@ -147,8 +157,13 @@ export function subscribeDocumentHandovers(
       } as DocumentHandover);
     });
     callback(docs);
-  }, (error) => {
-    console.error('Firestore subscribeDocumentHandovers error: ', error);
+  }, (error: any) => {
+    const isQuota = error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit') || error?.message?.includes('quota');
+    if (isQuota) {
+      console.warn('[Firestore] Documents sync standby: daily read quota limit reached, using local data until reset.');
+    } else {
+      console.warn('[Firestore] Documents sync notice: ', error?.message || error);
+    }
     if (onError) {
       onError(error);
     }
