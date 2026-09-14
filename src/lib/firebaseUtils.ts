@@ -2,6 +2,7 @@ import {
   collection, 
   addDoc, 
   updateDoc, 
+  setDoc,
   doc, 
   onSnapshot, 
   query, 
@@ -66,7 +67,10 @@ const documentsCollection = collection(db, 'document_handovers');
 /**
  * Real-time listener for supplies requests
  */
-export function subscribeSuppliesRequests(callback: (requests: SuppliesRequest[]) => void) {
+export function subscribeSuppliesRequests(
+  callback: (requests: SuppliesRequest[]) => void,
+  onError?: (error: any) => void
+) {
   const q = query(suppliesCollection, orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snapshot) => {
     const requests: SuppliesRequest[] = [];
@@ -79,7 +83,10 @@ export function subscribeSuppliesRequests(callback: (requests: SuppliesRequest[]
     });
     callback(requests);
   }, (error) => {
-    handleFirestoreError(error, OperationType.LIST, 'supplies_requests');
+    console.error('Firestore subscribeSuppliesRequests error: ', error);
+    if (onError) {
+      onError(error);
+    }
   });
 }
 
@@ -125,7 +132,10 @@ export async function deleteSuppliesRequest(id: string) {
 /**
  * Real-time listener for document/valuable handovers
  */
-export function subscribeDocumentHandovers(callback: (docs: DocumentHandover[]) => void) {
+export function subscribeDocumentHandovers(
+  callback: (docs: DocumentHandover[]) => void,
+  onError?: (error: any) => void
+) {
   const q = query(documentsCollection, orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snapshot) => {
     const docs: DocumentHandover[] = [];
@@ -138,7 +148,10 @@ export function subscribeDocumentHandovers(callback: (docs: DocumentHandover[]) 
     });
     callback(docs);
   }, (error) => {
-    handleFirestoreError(error, OperationType.LIST, 'document_handovers');
+    console.error('Firestore subscribeDocumentHandovers error: ', error);
+    if (onError) {
+      onError(error);
+    }
   });
 }
 
@@ -283,3 +296,90 @@ export async function seedSampleDataIfEmpty() {
     throw error;
   }
 }
+
+/**
+ * Bulk restore backup data into Firestore
+ */
+export async function restoreBackupData(
+  supplies: SuppliesRequest[],
+  documents: DocumentHandover[],
+  onProgress?: (current: number, total: number) => void
+): Promise<{ suppliesSuccess: number; docsSuccess: number; errors: string[] }> {
+  const errors: string[] = [];
+  let suppliesSuccess = 0;
+  let docsSuccess = 0;
+  const total = (supplies ? supplies.length : 0) + (documents ? documents.length : 0);
+  let current = 0;
+
+  if (supplies && supplies.length > 0) {
+    for (const item of supplies) {
+      try {
+        const { id, ...data } = item;
+        // Clean up data to conform to Firestore rules
+        const cleanData: any = {
+          createdAt: data.createdAt || new Date().toISOString(),
+          userName: data.userName,
+          helperName: data.helperName || '不明',
+          selectedItems: data.selectedItems || [],
+          otherDetails: data.otherDetails || '',
+          status: data.status || '新規',
+          urgency: data.urgency || '普通',
+          contactStatus: data.contactStatus || '未連絡',
+        };
+        if (data.receiptDate) cleanData.receiptDate = data.receiptDate;
+        if (data.officeStaff) cleanData.officeStaff = data.officeStaff;
+        if (data.contactMethod) cleanData.contactMethod = data.contactMethod;
+        if (data.updatedAt) cleanData.updatedAt = data.updatedAt;
+
+        if (id && /^[a-zA-Z0-9_\-]+$/.test(id)) {
+          await setDoc(doc(db, 'supplies_requests', id), cleanData);
+        } else {
+          await addDoc(suppliesCollection, cleanData);
+        }
+        suppliesSuccess++;
+      } catch (e: any) {
+        console.error('Failed to restore supply request:', item, e);
+        errors.push(`物品依頼 (${item.userName || '名前なし'}): ${e?.message || '書き込みエラー'}`);
+      }
+      current++;
+      onProgress?.(current, total);
+    }
+  }
+
+  if (documents && documents.length > 0) {
+    for (const item of documents) {
+      try {
+        const { id, ...data } = item;
+        const cleanDoc: any = {
+          createdAt: data.createdAt || new Date().toISOString(),
+          userName: data.userName,
+          documentName: data.documentName,
+          familyNotified: Boolean(data.familyNotified),
+          handoverStatus: data.handoverStatus || '保管中'
+        };
+        if (data.notificationDate) cleanDoc.notificationDate = data.notificationDate;
+        if (data.notificationStaff) cleanDoc.notificationStaff = data.notificationStaff;
+        if (data.handoverDate) cleanDoc.handoverDate = data.handoverDate;
+        if (data.handoverStaff) cleanDoc.handoverStaff = data.handoverStaff;
+        if (data.recipientName) cleanDoc.recipientName = data.recipientName;
+        if (data.notes) cleanDoc.notes = data.notes;
+        if (data.updatedAt) cleanDoc.updatedAt = data.updatedAt;
+
+        if (id && /^[a-zA-Z0-9_\-]+$/.test(id)) {
+          await setDoc(doc(db, 'document_handovers', id), cleanDoc);
+        } else {
+          await addDoc(documentsCollection, cleanDoc);
+        }
+        docsSuccess++;
+      } catch (e: any) {
+        console.error('Failed to restore doc handover:', item, e);
+        errors.push(`書類受渡 (${item.userName || '名前なし'}): ${e?.message || '書き込みエラー'}`);
+      }
+      current++;
+      onProgress?.(current, total);
+    }
+  }
+
+  return { suppliesSuccess, docsSuccess, errors };
+}
+

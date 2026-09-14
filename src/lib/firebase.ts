@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 
 const firebaseConfig = {
   projectId: "modular-plateau-7gtt6",
@@ -14,7 +14,20 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Configure persistent local cache (IndexedDB) for browser multi-tab to dramatically reduce Firestore read quota consumption
+let localCacheSetting: any = undefined;
+try {
+  if (typeof window !== 'undefined' && typeof window.indexedDB !== 'undefined') {
+    localCacheSetting = persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    });
+  }
+} catch (e) {
+  console.warn('Persistent local cache not supported in this environment:', e);
+}
+
 // Initialize Firestore with the specific databaseId provisioned by AI Studio and configure to ignore undefined fields
 export const db = initializeFirestore(app, {
-  ignoreUndefinedProperties: true
+  ignoreUndefinedProperties: true,
+  ...(localCacheSetting ? { localCache: localCacheSetting } : {})
 }, "ai-studio-0871ee80-cbbc-4850-9cbd-57dd5d6a854f");

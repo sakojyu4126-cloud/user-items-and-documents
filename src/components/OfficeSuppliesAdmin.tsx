@@ -13,7 +13,8 @@ import {
   Filter, 
   Info,
   RefreshCw,
-  Trash2
+  Trash2,
+  HardDrive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -21,9 +22,15 @@ interface OfficeSuppliesAdminProps {
   requests: SuppliesRequest[];
   onUpdateRequest: (id: string, updates: Partial<SuppliesRequest>) => Promise<void>;
   onDeleteRequest?: (id: string) => Promise<void>;
+  onOpenDataManagement?: () => void;
 }
 
-export default function OfficeSuppliesAdmin({ requests, onUpdateRequest, onDeleteRequest }: OfficeSuppliesAdminProps) {
+export default function OfficeSuppliesAdmin({ 
+  requests, 
+  onUpdateRequest, 
+  onDeleteRequest,
+  onOpenDataManagement 
+}: OfficeSuppliesAdminProps) {
   // Filters state
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all'); // all, 未連絡, 連絡済, 連絡したが返事がない
@@ -200,15 +207,27 @@ export default function OfficeSuppliesAdmin({ requests, onUpdateRequest, onDelet
           
           {/* Main Table Area */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden lg:col-span-2">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <div className="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50">
+              <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-emerald-600" />
-                <span>物品依頼 リアルタイム一覧</span>
+                <h2 className="text-base font-bold text-slate-800">物品依頼 リアルタイム一覧</h2>
                 <span className="text-xs font-normal text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full ml-1">
                   全 {filteredRequests.length} 件
                 </span>
-              </h2>
-              <p className="text-xxs text-slate-400">※行をクリックすると受付・連絡処理を行えます</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {onOpenDataManagement && (
+                  <button
+                    onClick={onOpenDataManagement}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 rounded-lg text-xs font-medium transition cursor-pointer shadow-2xs"
+                    title="データのバックアップ保存・復元"
+                  >
+                    <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>データ保存・復元</span>
+                  </button>
+                )}
+                <p className="text-xxs text-slate-400 hidden md:block">※行クリックで詳細編集</p>
+              </div>
             </div>
 
             {filteredRequests.length === 0 ? (

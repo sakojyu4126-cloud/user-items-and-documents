@@ -1,4 +1,4 @@
-import { Package, FileText, ClipboardList, Laptop, Smartphone } from 'lucide-react';
+import { Package, FileText, ClipboardList, Laptop, Smartphone, HardDrive } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface HeaderProps {
@@ -6,9 +6,16 @@ interface HeaderProps {
   setActiveTab: (tab: 'helper' | 'office-supplies' | 'office-docs') => void;
   uncontactedCount: number;
   pendingDocsCount: number;
+  onOpenDataManagement?: () => void;
 }
 
-export default function Header({ activeTab, setActiveTab, uncontactedCount, pendingDocsCount }: HeaderProps) {
+export default function Header({ 
+  activeTab, 
+  setActiveTab, 
+  uncontactedCount, 
+  pendingDocsCount,
+  onOpenDataManagement
+}: HeaderProps) {
   return (
     <header id="app-header" className="bg-slate-900 text-white shadow-md border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
@@ -28,11 +35,23 @@ export default function Header({ activeTab, setActiveTab, uncontactedCount, pend
             </p>
           </div>
 
-          {/* Quick Stats Indicator */}
-          <div className="flex items-center gap-4 text-xs">
-            <span className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 rounded-full text-slate-300">
+          {/* Actions & Quick Stats */}
+          <div className="flex items-center gap-3 text-xs">
+            {onOpenDataManagement && (
+              <button
+                id="btn-header-data-management"
+                onClick={onOpenDataManagement}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-emerald-950/60 text-slate-200 hover:text-emerald-300 border border-slate-700 hover:border-emerald-500/50 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs"
+                title="PCへデータをバックアップ保存、またはバックアップから復元"
+              >
+                <HardDrive className="w-4 h-4 text-emerald-400" />
+                <span>データ保存・復元</span>
+              </button>
+            )}
+
+            <span className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800/80 border border-slate-700/60 rounded-lg text-slate-300">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              リアルタイム同期中
+              クラウド同期
             </span>
           </div>
         </div>

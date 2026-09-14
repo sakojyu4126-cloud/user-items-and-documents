@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import HelperRequestForm from './components/HelperRequestForm';
 import OfficeSuppliesAdmin from './components/OfficeSuppliesAdmin';
 import OfficeDocumentAdmin from './components/OfficeDocumentAdmin';
+import DataManagementModal from './components/DataManagementModal';
 import { SuppliesRequest, DocumentHandover } from './types';
 import { 
   subscribeSuppliesRequests, 
@@ -12,49 +13,134 @@ import {
   subscribeDocumentHandovers, 
   addDocumentHandover, 
   updateDocumentHandover,
-  deleteDocumentHandover,
-  seedSampleDataIfEmpty
+  deleteDocumentHandover
 } from './lib/firebaseUtils';
-import { ClipboardList, Users, ArrowUpRight, HelpCircle } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'helper' | 'office-supplies' | 'office-docs'>('helper');
-  const [suppliesRequests, setSuppliesRequests] = useState<SuppliesRequest[]>([]);
-  const [documentHandovers, setDocumentHandovers] = useState<DocumentHandover[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Initialize from localStorage cache if available so UI doesn't flicker or blank out
+  const [suppliesRequests, setSuppliesRequests] = useState<SuppliesRequest[]>(() => {
+    try {
+      const cached = localStorage.getItem('kaigo_supplies_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  // 1. Fetch real-time subscriptions and seed initial sample data
+  const [documentHandovers, setDocumentHandovers] = useState<DocumentHandover[]>(() => {
+    try {
+      const cached = localStorage.getItem('kaigo_docs_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      const s = localStorage.getItem('kaigo_supplies_cache');
+      const d = localStorage.getItem('kaigo_docs_cache');
+      return !(s || d);
+    } catch {
+      return true;
+    }
+  });
+
+  const [showDataModal, setShowDataModal] = useState(false);
+
+  // Auto-sync non-empty datasets to localStorage as persistent local mirror
+  useEffect(() => {
+    if (suppliesRequests.length > 0) {
+      try {
+        localStorage.setItem('kaigo_supplies_cache', JSON.stringify(suppliesRequests));
+      } catch (e) {
+        console.warn('Failed to mirror supplies to localStorage:', e);
+      }
+    }
+  }, [suppliesRequests]);
+
+  useEffect(() => {
+    if (documentHandovers.length > 0) {
+      try {
+        localStorage.setItem('kaigo_docs_cache', JSON.stringify(documentHandovers));
+      } catch (e) {
+        console.warn('Failed to mirror documents to localStorage:', e);
+      }
+    }
+  }, [documentHandovers]);
+
+  // 1. Fetch real-time subscriptions with error handling
   useEffect(() => {
     let unsubscribeSupplies = () => {};
     let unsubscribeDocuments = () => {};
 
-    async function initDatabase() {
-      try {
-        // Seed database if empty so they have realistic records to play with
-        await seedSampleDataIfEmpty();
-        
-        // Listen to supplies requests in real-time
-        unsubscribeSupplies = subscribeSuppliesRequests((requests) => {
+    const handleFirestoreError = (err: any) => {
+      console.error("Firestore connection issue: ", err);
+      setLoading(false);
+    };
+
+    try {
+      // Listen to supplies requests in real-time
+      unsubscribeSupplies = subscribeSuppliesRequests(
+        (requests) => {
           setSuppliesRequests(requests);
           setLoading(false);
-        });
+        },
+        handleFirestoreError
+      );
 
-        // Listen to document handovers in real-time
-        unsubscribeDocuments = subscribeDocumentHandovers((docs) => {
+      // Listen to document handovers in real-time
+      unsubscribeDocuments = subscribeDocumentHandovers(
+        (docs) => {
           setDocumentHandovers(docs);
-        });
-      } catch (err) {
-        console.error("Failed to initialize database: ", err);
-        setLoading(false);
-      }
+          setLoading(false);
+        },
+        handleFirestoreError
+      );
+    } catch (err) {
+      handleFirestoreError(err);
     }
-
-    initDatabase();
 
     return () => {
       unsubscribeSupplies();
       unsubscribeDocuments();
     };
+  }, []);
+
+  // Handle immediate local restore from backup file
+  const handleLocalRestore = useCallback((newSupplies: SuppliesRequest[], newDocs: DocumentHandover[]) => {
+    if (newSupplies && newSupplies.length > 0) {
+      setSuppliesRequests(prev => {
+        const map = new Map<string, SuppliesRequest>(prev.map(item => [item.id, item]));
+        newSupplies.forEach(item => map.set(item.id, item));
+        const merged = Array.from(map.values()).sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        try {
+          localStorage.setItem('kaigo_supplies_cache', JSON.stringify(merged));
+        } catch {}
+        return merged;
+      });
+    }
+
+    if (newDocs && newDocs.length > 0) {
+      setDocumentHandovers(prev => {
+        const map = new Map<string, DocumentHandover>(prev.map(item => [item.id, item]));
+        newDocs.forEach(item => map.set(item.id, item));
+        const merged = Array.from(map.values()).sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        try {
+          localStorage.setItem('kaigo_docs_cache', JSON.stringify(merged));
+        } catch {}
+        return merged;
+      });
+    }
+
+    setLoading(false);
   }, []);
 
   // 2. Count metrics for badges
@@ -64,12 +150,13 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans antialiased text-slate-800">
       
-      {/* Header with real-time stats */}
+      {/* Header with real-time stats & Data Management Button */}
       <Header 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         uncontactedCount={uncontactedCount}
         pendingDocsCount={pendingDocsCount}
+        onOpenDataManagement={() => setShowDataModal(true)}
       />
 
       {/* Main Content Area */}
@@ -93,6 +180,7 @@ export default function App() {
                 requests={suppliesRequests}
                 onUpdateRequest={updateSuppliesRequest}
                 onDeleteRequest={deleteSuppliesRequest}
+                onOpenDataManagement={() => setShowDataModal(true)}
               />
             )}
 
@@ -102,11 +190,21 @@ export default function App() {
                 onAddDocument={addDocumentHandover}
                 onUpdateDocument={updateDocumentHandover}
                 onDeleteDocument={deleteDocumentHandover}
+                onOpenDataManagement={() => setShowDataModal(true)}
               />
             )}
           </div>
         )}
       </main>
+
+      {/* Data Management (Backup & Restore) Modal */}
+      <DataManagementModal 
+        isOpen={showDataModal}
+        onClose={() => setShowDataModal(false)}
+        suppliesRequests={suppliesRequests}
+        documentHandovers={documentHandovers}
+        onLocalRestore={handleLocalRestore}
+      />
 
       {/* Info footer for multiple devices instruction */}
       <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 py-6 text-xs text-center px-4">
@@ -131,3 +229,4 @@ export default function App() {
     </div>
   );
 }
+

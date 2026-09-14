@@ -16,7 +16,8 @@ import {
   MapPin,
   ClipboardCheck,
   PhoneCall,
-  Trash2
+  Trash2,
+  HardDrive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -25,9 +26,16 @@ interface OfficeDocumentAdminProps {
   onAddDocument: (doc: Omit<DocumentHandover, 'id'>) => Promise<string>;
   onUpdateDocument: (id: string, updates: Partial<DocumentHandover>) => Promise<void>;
   onDeleteDocument?: (id: string) => Promise<void>;
+  onOpenDataManagement?: () => void;
 }
 
-export default function OfficeDocumentAdmin({ documents, onAddDocument, onUpdateDocument, onDeleteDocument }: OfficeDocumentAdminProps) {
+export default function OfficeDocumentAdmin({ 
+  documents, 
+  onAddDocument, 
+  onUpdateDocument, 
+  onDeleteDocument,
+  onOpenDataManagement 
+}: OfficeDocumentAdminProps) {
   // Lists filters state
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all'); // all, 保管中, 受渡済
@@ -347,7 +355,18 @@ export default function OfficeDocumentAdmin({ documents, onAddDocument, onUpdate
                 <p className="text-xxs text-slate-500 mt-0.5">※家族が事務所へ取りに来たら「受渡処理」を行ってください</p>
               </div>
 
-              <div className="flex gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {onOpenDataManagement && (
+                  <button
+                    onClick={onOpenDataManagement}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 rounded text-xs font-medium transition cursor-pointer shadow-2xs"
+                    title="データのバックアップ保存・復元"
+                  >
+                    <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>データ保存・復元</span>
+                  </button>
+                )}
+
                 {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
