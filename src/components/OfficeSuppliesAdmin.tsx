@@ -14,7 +14,8 @@ import {
   Info,
   RefreshCw,
   Trash2,
-  HardDrive
+  HardDrive,
+  Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -22,14 +23,16 @@ interface OfficeSuppliesAdminProps {
   requests: SuppliesRequest[];
   onUpdateRequest: (id: string, updates: Partial<SuppliesRequest>) => Promise<void>;
   onDeleteRequest?: (id: string) => Promise<void>;
-  onOpenDataManagement?: () => void;
+  onOpenDataSave?: () => void;
+  onOpenDataRestore?: () => void;
 }
 
 export default function OfficeSuppliesAdmin({ 
   requests, 
   onUpdateRequest, 
   onDeleteRequest,
-  onOpenDataManagement 
+  onOpenDataSave,
+  onOpenDataRestore
 }: OfficeSuppliesAdminProps) {
   // Filters state
   const [searchTerm, setSearchTerm] = useState('');
@@ -216,17 +219,25 @@ export default function OfficeSuppliesAdmin({
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {onOpenDataManagement && (
+                {onOpenDataSave && (
                   <button
-                    onClick={onOpenDataManagement}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 rounded-lg text-xs font-medium transition cursor-pointer shadow-2xs"
-                    title="データのバックアップ保存・復元"
+                    onClick={onOpenDataSave}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition cursor-pointer shadow-2xs"
                   >
                     <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>データ保存・復元</span>
+                    <span>データ保存</span>
                   </button>
                 )}
-                <p className="text-xxs text-slate-400 hidden md:block">※行クリックで詳細編集</p>
+                {onOpenDataRestore && (
+                  <button
+                    onClick={onOpenDataRestore}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition cursor-pointer shadow-2xs"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-sky-600" />
+                    <span>データ復元</span>
+                  </button>
+                )}
+                <p className="text-xxs text-slate-400 hidden md:block ml-1">※行クリックで詳細編集</p>
               </div>
             </div>
 

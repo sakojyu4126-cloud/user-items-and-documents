@@ -3,7 +3,8 @@ import Header from './components/Header';
 import HelperRequestForm from './components/HelperRequestForm';
 import OfficeSuppliesAdmin from './components/OfficeSuppliesAdmin';
 import OfficeDocumentAdmin from './components/OfficeDocumentAdmin';
-import DataManagementModal from './components/DataManagementModal';
+import DataSaveModal from './components/DataSaveModal';
+import DataRestoreModal from './components/DataRestoreModal';
 import { SuppliesRequest, DocumentHandover } from './types';
 import { 
   subscribeSuppliesRequests, 
@@ -49,7 +50,8 @@ export default function App() {
     }
   });
 
-  const [showDataModal, setShowDataModal] = useState(false);
+  const [showDataSaveModal, setShowDataSaveModal] = useState(false);
+  const [showDataRestoreModal, setShowDataRestoreModal] = useState(false);
 
   // Auto-sync non-empty datasets to localStorage as persistent local mirror
   useEffect(() => {
@@ -248,13 +250,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans antialiased text-slate-800">
       
-      {/* Header with real-time stats & Data Management Button */}
+      {/* Header with real-time stats & Data Management Buttons */}
       <Header 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         uncontactedCount={uncontactedCount}
         pendingDocsCount={pendingDocsCount}
-        onOpenDataManagement={() => setShowDataModal(true)}
+        onOpenDataSave={() => setShowDataSaveModal(true)}
+        onOpenDataRestore={() => setShowDataRestoreModal(true)}
       />
 
       {/* Main Content Area */}
@@ -278,7 +281,8 @@ export default function App() {
                 requests={suppliesRequests}
                 onUpdateRequest={handleUpdateSuppliesRequest}
                 onDeleteRequest={handleDeleteSuppliesRequest}
-                onOpenDataManagement={() => setShowDataModal(true)}
+                onOpenDataSave={() => setShowDataSaveModal(true)}
+                onOpenDataRestore={() => setShowDataRestoreModal(true)}
               />
             )}
 
@@ -288,19 +292,26 @@ export default function App() {
                 onAddDocument={handleAddDocumentHandover}
                 onUpdateDocument={handleUpdateDocumentHandover}
                 onDeleteDocument={handleDeleteDocumentHandover}
-                onOpenDataManagement={() => setShowDataModal(true)}
+                onOpenDataSave={() => setShowDataSaveModal(true)}
+                onOpenDataRestore={() => setShowDataRestoreModal(true)}
               />
             )}
           </div>
         )}
       </main>
 
-      {/* Data Management (Backup & Restore) Modal */}
-      <DataManagementModal 
-        isOpen={showDataModal}
-        onClose={() => setShowDataModal(false)}
+      {/* Data Save (Print & CSV/JSON Export) Modal */}
+      <DataSaveModal 
+        isOpen={showDataSaveModal}
+        onClose={() => setShowDataSaveModal(false)}
         suppliesRequests={suppliesRequests}
         documentHandovers={documentHandovers}
+      />
+
+      {/* Data Restore Modal */}
+      <DataRestoreModal 
+        isOpen={showDataRestoreModal}
+        onClose={() => setShowDataRestoreModal(false)}
         onLocalRestore={handleLocalRestore}
       />
 

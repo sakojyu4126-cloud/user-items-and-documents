@@ -1,4 +1,4 @@
-import { Package, FileText, ClipboardList, Laptop, Smartphone, HardDrive } from 'lucide-react';
+import { Package, FileText, ClipboardList, Laptop, Smartphone, HardDrive, Upload } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface HeaderProps {
@@ -6,7 +6,8 @@ interface HeaderProps {
   setActiveTab: (tab: 'helper' | 'office-supplies' | 'office-docs') => void;
   uncontactedCount: number;
   pendingDocsCount: number;
-  onOpenDataManagement?: () => void;
+  onOpenDataSave?: () => void;
+  onOpenDataRestore?: () => void;
 }
 
 export default function Header({ 
@@ -14,7 +15,8 @@ export default function Header({
   setActiveTab, 
   uncontactedCount, 
   pendingDocsCount,
-  onOpenDataManagement
+  onOpenDataSave,
+  onOpenDataRestore
 }: HeaderProps) {
   return (
     <header id="app-header" className="bg-slate-900 text-white shadow-md border-b border-slate-800">
@@ -36,16 +38,26 @@ export default function Header({
           </div>
 
           {/* Actions & Quick Stats */}
-          <div className="flex items-center gap-3 text-xs">
-            {onOpenDataManagement && (
+          <div className="flex items-center gap-2 sm:gap-3 text-xs">
+            {onOpenDataSave && (
               <button
-                id="btn-header-data-management"
-                onClick={onOpenDataManagement}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-emerald-950/60 text-slate-200 hover:text-emerald-300 border border-slate-700 hover:border-emerald-500/50 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs"
-                title="PCへデータをバックアップ保存、またはバックアップから復元"
+                id="btn-header-data-save"
+                onClick={onOpenDataSave}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs"
               >
-                <HardDrive className="w-4 h-4 text-emerald-400" />
-                <span>データ保存・復元</span>
+                <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
+                <span>データ保存</span>
+              </button>
+            )}
+
+            {onOpenDataRestore && (
+              <button
+                id="btn-header-data-restore"
+                onClick={onOpenDataRestore}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs"
+              >
+                <Upload className="w-3.5 h-3.5 text-sky-400" />
+                <span>データ復元</span>
               </button>
             )}
 

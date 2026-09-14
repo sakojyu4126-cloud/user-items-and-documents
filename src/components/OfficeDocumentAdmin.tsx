@@ -17,7 +17,8 @@ import {
   ClipboardCheck,
   PhoneCall,
   Trash2,
-  HardDrive
+  HardDrive,
+  Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -26,7 +27,8 @@ interface OfficeDocumentAdminProps {
   onAddDocument: (doc: Omit<DocumentHandover, 'id'>) => Promise<string>;
   onUpdateDocument: (id: string, updates: Partial<DocumentHandover>) => Promise<void>;
   onDeleteDocument?: (id: string) => Promise<void>;
-  onOpenDataManagement?: () => void;
+  onOpenDataSave?: () => void;
+  onOpenDataRestore?: () => void;
 }
 
 export default function OfficeDocumentAdmin({ 
@@ -34,7 +36,8 @@ export default function OfficeDocumentAdmin({
   onAddDocument, 
   onUpdateDocument, 
   onDeleteDocument,
-  onOpenDataManagement 
+  onOpenDataSave,
+  onOpenDataRestore
 }: OfficeDocumentAdminProps) {
   // Lists filters state
   const [searchTerm, setSearchTerm] = useState('');
@@ -356,14 +359,22 @@ export default function OfficeDocumentAdmin({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                {onOpenDataManagement && (
+                {onOpenDataSave && (
                   <button
-                    onClick={onOpenDataManagement}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 rounded text-xs font-medium transition cursor-pointer shadow-2xs"
-                    title="データのバックアップ保存・復元"
+                    onClick={onOpenDataSave}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-xs font-semibold transition cursor-pointer shadow-2xs"
                   >
                     <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>データ保存・復元</span>
+                    <span>データ保存</span>
+                  </button>
+                )}
+                {onOpenDataRestore && (
+                  <button
+                    onClick={onOpenDataRestore}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-xs font-semibold transition cursor-pointer shadow-2xs"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-sky-600" />
+                    <span>データ復元</span>
                   </button>
                 )}
 
